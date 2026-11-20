@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tra cứu số thứ tự</title>
+<style>
+/* VOICE: calm, civic, fast — a tool used at a polling-table under pressure
+   IDEA: the voter roll on the desk, with a big stamped number
+   PICTURE: the live search box and result cards with a large STT stamp
+   COLOUR and TYPE: deep civic red band, white paper, gold accent; Be Vietnam Pro
+   LAYOUT: one column, sticky search on top, results below, thumb-sized */
+:root{color-scheme:light dark;--bg:light-dark(#faf8f5,#141212);--card:light-dark(#fff,#1f1c1b);--ink:light-dark(#1d1a19,#f2eeec);--mute:light-dark(#6b6360,#a59d99);--line:light-dark(#e6e0dc,#332e2c);--red:#b3141f;--red2:light-dark(#8f0f18,#d33a43);--gold:#f2c230;--ok:light-dark(#1f7a3a,#5fcf84)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:clip}
+header{background:var(--red);color:#fff;padding:18px max(4vw,16px) 14px}
+header h1{margin:0;font-size:22px;line-height:1.15;font-weight:800;text-wrap:balance}
+header p{margin:4px 0 0;font-size:14px;opacity:.85}
+.wrap{max-width:720px;margin:0 auto}
+.bar{position:sticky;top:0;z-index:5;background:var(--red);padding:0 max(4vw,16px) 14px;box-shadow:0 6px 14px -10px #0008}
+.sbox{position:relative}
+#q{width:100%;font:inherit;font-size:20px;padding:14px 48px 14px 16px;border:0;border-radius:14px;background:#fff;color:#1d1a19;outline:3px solid transparent}
+#q:focus{outline-color:var(--gold)}
+#clr{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;font-size:26px;color:#777;cursor:pointer;display:none}
+.meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#fff;font-size:13px;margin-top:8px;opacity:.9}
+main{padding:14px max(4vw,16px) 40px}
+.card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.card.done{opacity:.6}
+.stt{min-width:76px;height:76px;padding:0 8px;border-radius:14px;background:var(--gold);color:#3a2a00;display:grid;place-items:center;text-align:center}
+.stt small{display:block;font-size:11px;font-weight:700;line-height:1;margin-top:6px}
+.stt b{font-size:clamp(26px,8vw,34px);line-height:1;font-weight:800;margin-bottom:6px}
+.nm{font-size:19px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+.nm mark{background:light-dark(#ffe9a3,#5a4300);color:inherit;border-radius:3px}
+.ex{font-size:14px;color:var(--mute);margin-top:2px;overflow-wrap:anywhere}
+.mk{margin-top:8px;font:inherit;font-size:14px;min-height:40px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.done .mk{border-color:var(--ok);color:var(--ok);font-weight:700}
+.empty{text-align:center;color:var(--mute);padding:28px 8px}
+.empty strong{display:block;color:var(--ink);font-size:18px;margin-bottom:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 18px;border-radius:12px;border:0;background:var(--red2);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+input[type=file]{display:none}
+details{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 14px}
+summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:700}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+select{width:100%;font:inherit;font-size:16px;min-height:44px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.note{font-size:13px;color:var(--mute);margin:12px 0}
+button:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+@media(prefers-reduced-motion:no-preference){.card{animation:in .18s ease-out}@keyframes in{from{opacity:0;transform:translateY(4px)}}}
+
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{flex:1;min-height:44px;border:0;border-radius:12px;background:#ffffff26;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.tab[aria-selected=true]{background:#fff;color:var(--red)}
+.hide{display:none!important}
+.big{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.big .n{font-size:clamp(40px,12vw,56px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.big .n span{font-size:.45em;color:var(--mute);font-weight:500}
+.prog{height:14px;border-radius:7px;background:var(--line);overflow:hidden;margin:12px 0 8px}
+.prog i{display:block;height:100%;background:var(--ok);border-radius:7px}
+.kv{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:15px;color:var(--mute)}
+.kv b{color:var(--ink);font-variant-numeric:tabular-nums}
+h2{font-size:17px;margin:0 0 10px}
+.br{display:grid;grid-template-columns:5.5em minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14px;margin:7px 0}
+.br .t{height:12px;border-radius:6px;background:var(--line);overflow:hidden}.br .t i{display:block;height:100%;background:var(--red2)}
+.br .v{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:15px}
+.li:first-child{border-top:0}
+.li small{color:var(--mute);white-space:nowrap}
+.sm{font:inherit;font-size:13px;min-height:36px;padding:4px 10px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;white-space:nowrap}
+textarea{width:100%;min-height:80px;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.msg{font-size:14px;color:var(--ok);min-height:1.4em;margin-top:6px}
+</style></head><body><div class="wrap">
+<header><h1>Tra cứu số thứ tự cử tri</h1><p id="src">Chưa nạp danh sách</p></header>
+<div class="bar"><div class="tabs" role="tablist"><button class="tab" id="tF" role="tab" aria-selected="true">Tra cứu</button><button class="tab" id="tS" role="tab" aria-selected="false">Thống kê</button></div>
+<div class="sbox" id="sbox"><input id="q" type="search" autocomplete="off" placeholder="Gõ tên, ví dụ: pham thi diu" aria-label="Tìm theo tên hoặc số thứ tự"><button id="clr" aria-label="Xoá">×</button></div>
+<div class="meta"><span id="count"></span><span id="stat"></span></div></div>
+<main>
+<div id="vFind"><div id="out"></div></div>
+<div id="vStat" class="hide"><div id="sBody"></div><div class="big" id="sync"></div>
+<details class="big" style="padding:4px 16px"><summary>Danh sách &amp; cài đặt</summary><div class="row" style="justify-content:flex-start"><button class="btn" id="pick">Chọn lại file Excel</button><button class="btn ghost" id="reset">Xoá tất cả đánh dấu</button></div>
+<p class="note">File Excel chỉ được đọc trên chính máy này, không gửi đi đâu. Danh sách và đánh dấu lưu trong trình duyệt của máy; đừng xoá dữ liệu Safari hay dùng tab riêng tư trong ngày bầu.</p></details></div>
+<input type="file" id="file" accept=".xlsx,.xls" style="display:none">
+</main></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+{
+let D=[];const YEAR=2026;
+const $=id=>document.getElementById(id);
+const KEY='ttcuTri.tdp12.done';
+let done={};try{done=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(done))}catch(e){}};
+const norm=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[đĐ]/g,'d').toLowerCase().replace(/\s+/g,' ').trim();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let byStt={},idx=[],cnt={};
+function setData(rows){D=rows;byStt={};D.forEach(r=>byStt[r[0]]=r);idx=D.map((r,i)=>({i,name:norm(r[1]),all:norm(r[1]+' '+r[2]+' '+r[3]+' '+r[4]),stt:String(r[0])}));cnt={};idx.forEach(x=>cnt[x.name]=(cnt[x.name]||0)+1);
+  $('src').textContent=D.length?(LIST||'Danh sách')+' · '+D.length+' người':'Chưa nạp danh sách';}
+const LKEY='ttcuTri.list.v2';let LIST='';
+function saveList(){try{localStorage.setItem(LKEY,JSON.stringify({LIST,D}))}catch(e){}}
+function loadList(){try{const v=JSON.parse(localStorage.getItem(LKEY)||'null');if(v&&v.D){LIST=v.LIST;return v.D}}catch(e){}return []}
+const fmtD=v=>{if(v instanceof Date&&!isNaN(v)){const d=new Date(v.getTime()+12*36e5);return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear()}return String(v??'').trim()};
+function parse(wb){
+  let best=[];
+  for(const sn of wb.SheetNames){
+    const a=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
+    let hi=-1;for(let i=0;i<Math.min(a.length,25);i++){const r=a[i].map(norm);if(r.some(x=>/^(stt|tt)$/.test(x)||x.startsWith('stt'))&&r.some(x=>x.includes('ho ten')||x.includes('ho va ten'))){hi=i;break}}
+    if(hi<0)continue;const h=a[hi].map(norm),f=p=>h.findIndex(p);
+    const cS=f(x=>/^(stt|tt)/.test(x)),cN=f(x=>x.includes('ho ten')||x.includes('ho va ten')),cB=f(x=>x.includes('sinh')),cM=f(x=>x==='nam'),cF=f(x=>x==='nu'),cG=f(x=>x.includes('gioi')),cC=f(x=>x.includes('ghi chu'));
+    const out=[];for(const r of a.slice(hi+1)){const s=r[cS],n=String(r[cN]??'').trim();if(!n||!/^\d+$/.test(String(s).trim()))continue;
+      const g=cG>=0?String(r[cG]).trim():(cM>=0&&String(r[cM]).trim()?'Nam':(cF>=0&&String(r[cF]).trim()?'Nữ':''));
+      out.push([+String(s).trim(),n,cB>=0?fmtD(r[cB]):'',g,cC>=0?String(r[cC]??'').trim():''])}
+    if(out.length>best.length)best=out;
+  }
+  return best;
+}
+const hm=t=>{if(!t||t===1)return '';const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const age=r=>YEAR-(+String(r[2]).slice(-4)||YEAR);
+const pct=(a,b)=>b?Math.round(a*1000/b)/10:0;
+
+function hl(t,terms){
+  t=String(t);if(!terms.length)return esc(t);let n='',map=[];
+  for(let i=0;i<t.length;i++)for(const ch of norm(t[i])){n+=ch;map.push(i)}
+  const m=new Array(t.length).fill(false);
+  for(const w of terms){let p=n.indexOf(w);while(p>=0){for(let k=p;k<p+w.length;k++)m[map[k]]=true;p=n.indexOf(w,p+1)}}
+  let o='',on=false;for(let i=0;i<t.length;i++){if(m[i]!==on){o+=on?'</mark>':'<mark>';on=m[i]}o+=esc(t[i])}return o+(on?'</mark>':'');
+}
+function stat(){if(!D.length){$('stat').textContent='';return}const n=Object.keys(done).length;$('stat').textContent='Đã nhận phiếu: '+n+'/'+D.length}
+function toggle(s){if(done[s])delete done[s];else done[s]=Date.now();save();refresh()}
+function refresh(){stat();run();if(!$('vStat').classList.contains('hide'))stats()}
+
+function run(){
+  const raw=$('q').value,q=norm(raw),out=$('out');$('clr').style.display=raw?'block':'none';
+  if(!D.length){$('count').textContent='';out.innerHTML='<div class="empty"><strong>Chọn file Excel danh sách cử tri</strong>Chỉ cần chọn một lần, lần sau mở trang là dùng ngay.<div class="row"><button class="btn" id="pick2">Chọn file Excel</button></div><div id="perr"></div></div>';$('pick2').onclick=()=>$('file').click();return}
+  if(!q){$('count').textContent='Gõ tên hoặc số thứ tự để tìm';out.innerHTML='<div class="empty">Gõ vài chữ của tên, không cần dấu.<br>Ví dụ: <b>dìu</b>, <b>pham phuoc</b>, số <b>45</b>, hoặc thêm năm sinh: <b>loc 1993</b>.</div>';return}
+  const terms=q.split(' ').filter(Boolean);let res;
+  if(/^\d+$/.test(q)&&q.length<4){res=idx.filter(x=>x.stt===q)}
+  else{
+    res=idx.filter(x=>terms.every(w=>x.all.includes(w)));
+    const sc=x=>x.name===q?0:(' '+x.name).endsWith(' '+q)?1:x.name.startsWith(q)?2:(' '+x.name).includes(' '+q)?3:4;
+    res.sort((a,b)=>sc(a)-sc(b)||a.i-b.i);
+  }
+  $('count').textContent=res.length?('Tìm thấy '+res.length+' người'+(res.length>60?' · hiện 60 đầu tiên, gõ thêm để lọc':'')):'';
+  if(!res.length){out.innerHTML='<div class="empty"><strong>Không tìm thấy</strong>Thử gõ ít chữ hơn (chỉ tên gọi), hoặc kiểm tra chính tả.</div>';return}
+  out.innerHTML=res.slice(0,60).map(x=>{const r=D[x.i],d=done[r[0]];
+    const same=cnt[x.name]>1?' · <b>trùng tên, xem ngày sinh</b>':'';
+    return `<div class="card${d?' done':''}"><div class="stt"><small>STT</small><b>${r[0]}</b></div><div>
+    <div class="nm">${hl(r[1],terms)}</div><div class="ex">Sinh ${hl(r[2],terms)} · ${r[3]}${r[4]?' · Ghi chú: '+esc(r[4]):''}${same}</div>
+    <button class="mk" data-s="${r[0]}">${d?'✓ Đã nhận phiếu'+(hm(d)?' lúc '+hm(d):''):'Đánh dấu đã nhận phiếu'}</button></div></div>`}).join('');
+}
+
+function bars(groups){const mx=1;return groups.map(([l,a,b])=>`<div class="br"><span>${l}</span><div class="t"><i style="width:${pct(a,b)}%"></i></div><span class="v">${a}/${b} · ${pct(a,b)}%</span></div>`).join('')}
+function stats(){
+  const ks=Object.keys(done),n=ks.length,T=D.length;
+  const g=s=>{const all=D.filter(r=>r[3]===s);return [s,all.filter(r=>done[r[0]]).length,all.length]};
+  const ag=[['Dưới 40',0,39],['40–59',40,59],['60–79',60,79],['Từ 80',80,200]].map(([l,a,b])=>{const all=D.filter(r=>{const x=age(r);return x>=a&&x<=b});return [l,all.filter(r=>done[r[0]]).length,all.length]});
+  const hours={};ks.forEach(k=>{const t=done[k];if(t&&t!==1){const h=new Date(t).getHours();hours[h]=(hours[h]||0)+1}});
+  const hk=Object.keys(hours).map(Number).sort((a,b)=>a-b),hmx=Math.max(1,...Object.values(hours));
+  const recent=ks.filter(k=>done[k]!==1).sort((a,b)=>done[b]-done[a]).slice(0,10);
+  $('sBody').innerHTML=`
+  <div class="big"><div class="n">${n}<span> / ${T} hộ đã nhận phiếu</span></div>
+  <div class="prog"><i style="width:${pct(n,T)}%"></i></div>
+  <div class="kv"><span>Tỉ lệ <b>${pct(n,T)}%</b></span><span>Còn lại <b>${T-n}</b> hộ</span></div></div>
+  <div class="big"><h2>Theo giới tính</h2>${bars([g('Nam'),g('Nữ')])}</div>
+  <div class="big"><h2>Theo độ tuổi (tính năm ${YEAR})</h2>${bars(ag)}</div>
+  <div class="big"><h2>Theo giờ nhận phiếu</h2>${hk.length?hk.map(h=>`<div class="br"><span>${h}h–${h+1}h</span><div class="t"><i style="width:${hours[h]*100/hmx}%"></i></div><span class="v">${hours[h]} hộ</span></div>`).join(''):'<p class="note">Chưa có lượt nào.</p>'}</div>
+  <div class="big"><h2>Vừa nhận phiếu</h2>${recent.length?recent.map(k=>`<div class="li"><span><b>${k}</b> · ${esc(byStt[k][1])}</span><span><small>${hm(done[k])}</small> <button class="sm" data-u="${k}">Bỏ</button></span></div>`).join(''):'<p class="note">Chưa có lượt nào.</p>'}</div>
+  <details class="big" style="padding:4px 16px"><summary>Danh sách đã nhận phiếu (${n})</summary>${ks.map(Number).sort((a,b)=>a-b).map(k=>`<div class="li"><span><b>${k}</b> · ${esc(byStt[k][1])}</span><small>${hm(done[k])}</small></div>`).join('')||'<p class="note">Trống.</p>'}</details>
+  <details class="big" style="padding:4px 16px"><summary>Danh sách chưa nhận phiếu (${T-n})</summary>${D.filter(r=>!done[r[0]]).map(r=>`<div class="li"><span><b>${r[0]}</b> · ${esc(r[1])}</span><small>${esc(r[2])}</small></div>`).join('')||'<p class="note">Đã đủ.</p>'}</details>`;
+}
+
+$('sync').innerHTML=`<h2>Gộp số liệu nhiều máy</h2><p class="note">Mỗi máy chỉ đếm những lượt đánh dấu trên máy đó. Máy phụ bấm "Sao chép mã" rồi gửi qua Zalo cho máy chính; máy chính dán vào ô dưới và bấm "Gộp".</p>
+<div class="row" style="justify-content:flex-start;margin-top:0"><button class="btn ghost" id="copy">Sao chép mã của máy này</button></div>
+<label for="paste">Dán mã từ máy khác</label><textarea id="paste" placeholder="Ví dụ: 1,4,45,399"></textarea>
+<div class="row" style="justify-content:flex-start"><button class="btn" id="merge">Gộp</button></div><div class="msg" id="smsg"></div>`;
+
+function code(){return Object.keys(done).map(Number).sort((a,b)=>a-b).map(k=>done[k]===1?k:k+'@'+Math.round(done[k]/60000)).join(',')}
+$('copy').onclick=async()=>{const c=code();try{await navigator.clipboard.writeText(c);$('smsg').textContent='Đã sao chép mã ('+Object.keys(done).length+' hộ).'}catch(e){$('paste').value=c;$('paste').select();$('smsg').textContent='Không tự sao chép được — mã đã hiện trong ô, hãy giữ để sao chép.'}};
+$('merge').onclick=()=>{let add=0;for(const p of $('paste').value.split(/[^\d@]+/)){if(!p)continue;const [s,m]=p.split('@');if(byStt[s]&&!done[s]){done[s]=m?(+m)*60000:1;add++}}save();$('paste').value='';$('smsg').textContent='Đã gộp thêm '+add+' hộ.';refresh()};
+
+function view(v){const st=v==='stat';$('vFind').classList.toggle('hide',st);$('vStat').classList.toggle('hide',!st);$('sbox').classList.toggle('hide',st);$('count').classList.toggle('hide',st);
+  $('tF').setAttribute('aria-selected',!st);$('tS').setAttribute('aria-selected',st);if(st)stats();else $('q').focus()}
+$('tF').onclick=()=>view('find');$('tS').onclick=()=>view('stat');
+document.addEventListener('click',e=>{const b=e.target.closest('.mk');if(b)toggle(b.dataset.s);const u=e.target.closest('[data-u]');if(u)toggle(u.dataset.u)});
+$('reset').onclick=()=>{const b=$('reset');if(b.dataset.c){done={};save();refresh();b.textContent='Xoá tất cả đánh dấu';delete b.dataset.c}else{b.dataset.c=1;b.textContent='Bấm lần nữa để xoá hết'}};
+$('q').addEventListener('input',run);
+$('clr').onclick=()=>{$('q').value='';run();$('q').focus()};
+$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{if(typeof XLSX==='undefined')throw new Error('Chưa tải được bộ đọc Excel, cần có mạng khi chọn file lần đầu.');
+    const rows=parse(XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true}));
+    if(!rows.length)throw new Error('Không thấy cột "Stt" và "Họ tên" trong file.');
+    const changed=LIST&&LIST!==f.name.replace(/\.[^.]+$/,'');LIST=f.name.replace(/\.[^.]+$/,'');setData(rows);saveList();
+    if(changed){done={};save()}view('find');refresh();}
+  catch(err){const p=document.getElementById('perr');const m='<p class="note" style="color:var(--red2)">Không đọc được file: '+esc(err.message)+'</p>';if(p)p.innerHTML=m;else $('smsg').textContent=err.message}
+  e.target.value=''};
+$('pick').onclick=()=>$('file').click();
+setData(loadList());stat();run();
+}
+</script></body></html>
